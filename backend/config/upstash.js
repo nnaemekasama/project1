@@ -29,15 +29,23 @@ if (QSTASH_URL && QSTASH_TOKEN) {
       baseUrl: QSTASH_URL,
       token: QSTASH_TOKEN,
     })
+    console.log("✅ Upstash Workflow client initialized successfully")
+    console.log(`   QSTASH_URL: ${QSTASH_URL}`)
   } catch (error) {
     console.error(
-      "Failed to initialize Upstash Workflow client:",
+      "❌ Failed to initialize Upstash Workflow client:",
       error.message
     )
+    console.error("   Error details:", error)
   }
 } else {
   console.warn(
-    "⚠️  Upstash QStash is not configured. Workflow features will be disabled. Set QSTASH_URL and QSTASH_TOKEN in your .env file to enable workflows."
+    "⚠️  Upstash QStash is not configured. Workflow features will be disabled."
+  )
+  console.warn(`   QSTASH_URL: ${QSTASH_URL ? "SET" : "NOT SET"}`)
+  console.warn(`   QSTASH_TOKEN: ${QSTASH_TOKEN ? "SET" : "NOT SET"}`)
+  console.warn(
+    "   Set QSTASH_URL and QSTASH_TOKEN in your environment variables to enable workflows."
   )
 }
 

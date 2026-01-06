@@ -11,8 +11,22 @@ export const createSubscription = async (req, res, next) => {
 
     // Only trigger workflow if Upstash is configured
     let workflowRunId = null
-    if (workflowClient) {
+
+    if (!workflowClient) {
+      console.warn(
+        "⚠️  Workflow client is not initialized. Check QSTASH_URL and QSTASH_TOKEN environment variables."
+      )
+      console.warn(`QSTASH_URL: ${process.env.QSTASH_URL ? "SET" : "NOT SET"}`)
+      console.warn(
+        `QSTASH_TOKEN: ${process.env.QSTASH_TOKEN ? "SET" : "NOT SET"}`
+      )
+    } else {
       try {
+        console.log(`Triggering workflow for subscription ${subscription.id}`)
+        console.log(
+          `Workflow URL: ${SERVER_URL}/api/v1/workflows/subscription/reminder`
+        )
+
         const result = await workflowClient.trigger({
           url: `${SERVER_URL}/api/v1/workflows/subscription/reminder`,
           body: {
@@ -24,6 +38,9 @@ export const createSubscription = async (req, res, next) => {
           retries: 0,
         })
         workflowRunId = result.workflowRunId
+        console.log(
+          `✅ Workflow triggered successfully. Run ID: ${workflowRunId}`
+        )
       } catch (workflowError) {
         // Log workflow error but don't fail the subscription creation
         console.error("Failed to trigger workflow:", workflowError.message)

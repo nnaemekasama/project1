@@ -9,13 +9,26 @@ const REMINDERS = [7, 5, 2, 1]
 
 export const sendReminders = serve(async (context) => {
   const { subscriptionId } = context.requestPayload
+  console.log(`Workflow triggered for subscription: ${subscriptionId}`)
+  
   const subscription = await fetchSubscription(context, subscriptionId)
 
-  if (!subscription || subscription.status !== "active") return
+  if (!subscription) {
+    console.log(`Subscription ${subscriptionId} not found`)
+    return
+  }
+
+  if (subscription.status !== "active") {
+    console.log(`Subscription ${subscriptionId} is not active (status: ${subscription.status})`)
+    return
+  }
 
   const renewalDate = dayjs(subscription.renewalDate)
+  const now = dayjs()
 
-  if (renewalDate.isBefore(dayjs())) {
+  console.log(`Renewal date: ${renewalDate.format("YYYY-MM-DD")}, Today: ${now.format("YYYY-MM-DD")}`)
+
+  if (renewalDate.isBefore(now)) {
     console.log(
       `Renewal date has passed for subscription ${subscriptionId}. Stopping workflow.`
     )
@@ -24,23 +37,41 @@ export const sendReminders = serve(async (context) => {
 
   for (const daysBefore of REMINDERS) {
     const reminderDate = renewalDate.subtract(daysBefore, "day")
+    const reminderDateStr = reminderDate.format("YYYY-MM-DD")
+    const todayStr = now.format("YYYY-MM-DD")
 
-    if (reminderDate.isAfter(dayjs())) {
-      await sleepUntilReminder(
-        context,
-        `Reminder ${daysBefore} days before`,
-        reminderDate
-      )
-    }
+    console.log(`Checking reminder ${daysBefore} days before (${reminderDateStr})`)
 
-    if (dayjs().isSame(reminderDate, "day")) {
+    // If reminder date is in the past or today, send immediately
+    if (reminderDate.isBefore(now) || reminderDate.isSame(now, "day")) {
+      console.log(`Reminder ${daysBefore} days before is due now (${reminderDateStr} <= ${todayStr}), sending immediately`)
       await triggerReminder(
         context,
         `${daysBefore} days before reminder`,
         subscription
       )
+    } 
+    // If reminder date is in the future, schedule it
+    else if (reminderDate.isAfter(now)) {
+      console.log(`Scheduling reminder ${daysBefore} days before for ${reminderDateStr}`)
+      await sleepUntilReminder(
+        context,
+        `Reminder ${daysBefore} days before`,
+        reminderDate
+      )
+      // After sleeping, check if we should send the reminder
+      const currentDate = dayjs()
+      if (currentDate.isSame(reminderDate, "day") || currentDate.isAfter(reminderDate)) {
+        await triggerReminder(
+          context,
+          `${daysBefore} days before reminder`,
+          subscription
+        )
+      }
     }
   }
+  
+  console.log(`Workflow completed for subscription ${subscriptionId}`)
 })
 
 const fetchSubscription = async (context, subscriptionId) => {
